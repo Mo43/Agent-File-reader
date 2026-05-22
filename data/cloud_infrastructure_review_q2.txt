@@ -1,0 +1,75 @@
+Cloud Infrastructure Review — Q2 2025
+Engineering Division | Internal Technical Report
+
+Executive Summary
+-----------------
+This report covers the outcomes of the Q2 infrastructure audit conducted across all production
+environments. The audit identified three critical bottlenecks, two unresolved security findings
+from the previous quarter, and a set of recommendations for the Q3 roadmap.
+
+Current Architecture Overview
+------------------------------
+Production workloads are distributed across three AWS regions: eu-west-1 (primary), eu-west-2
+(failover), and us-east-1 (client-specific contractual requirement). The stack is predominantly
+containerised (ECS Fargate) with two legacy services still running on EC2 instances that have
+not yet been migrated.
+
+Key metrics this quarter:
+- Average uptime across all services: 99.71% (target: 99.9%)
+- Mean time to recovery (MTTR): 23 minutes (target: 15 minutes)
+- Deployment frequency: 4.2 deploys per day across all services
+- Change failure rate: 6.8% (industry benchmark: <5%)
+
+Findings
+--------
+
+1. Auto-scaling configuration gaps
+   The payments service and the notification service both lack configured scale-in policies.
+   Under sustained low-traffic periods, over-provisioned capacity is not being released,
+   resulting in an estimated £1,200/month of avoidable spend. Recommended action: define
+   scale-in cooldown periods and minimum healthy instance counts for both services by week 28.
+
+2. Unpatched base images
+   Container image scanning via ECR identified 14 medium-severity CVEs across three base
+   images (node:18-alpine, python:3.11-slim, nginx:1.24). Two of these were flagged in Q1
+   and have not been remediated. A patch pipeline exists but is not enforced on the affected
+   repositories. Recommended action: enforce image scanning as a CI gate; block merges on
+   any image with severity >= HIGH.
+
+3. CloudWatch alarm coverage
+   Only 61% of production Lambda functions have associated CloudWatch alarms. Functions
+   processing payment webhooks and user authentication events have no alerting configured.
+   An outage on the auth Lambda last month went undetected for 34 minutes because no alarm
+   fired. Recommended action: mandate alarm coverage for all business-critical Lambda
+   functions before end of Q3.
+
+Security Findings (carried from Q1)
+-------------------------------------
+Finding S-04: IAM roles in the data pipeline stack grant s3:* on the production bucket.
+Least-privilege remediation was scoped in Q1 but deprioritised. Risk level: HIGH.
+Owner: Platform team. Due: week 26.
+
+Finding S-07: API Gateway endpoints in the reporting service lack request validation schemas.
+Malformed payloads have caused 500 errors in production on two occasions this quarter.
+Risk level: MEDIUM. Owner: Backend team. Due: week 29.
+
+Cost Summary
+------------
+Total AWS spend Q2: £87,400
+vs Q1: £81,200 (+7.6%)
+Primary drivers of increase: data transfer costs from the new video processing service (+£3,100)
+and on-demand EC2 hours from the two unmigrated legacy services (+£2,100).
+
+Projected Q3 spend if no action taken: £94,000–£97,000.
+Projected Q3 spend with recommended changes: £88,000–£90,000.
+
+Recommendations for Q3 Roadmap
+--------------------------------
+Priority 1 — Remediate S-04 IAM finding (security risk, overdue).
+Priority 2 — Migrate legacy EC2 services to Fargate (cost and consistency).
+Priority 3 — Enforce image scanning CI gate across all repositories.
+Priority 4 — Expand CloudWatch alarm coverage to 100% of business-critical functions.
+Priority 5 — Define and test a formal DR runbook; current MTTR exceeds target.
+
+Prepared by: Platform Engineering
+Review date: End of Q3 2025

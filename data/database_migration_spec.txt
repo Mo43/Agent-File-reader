@@ -1,0 +1,119 @@
+Legacy Database Migration — Technical Specification
+Project: Hydra | Version: 1.2 | Status: Draft for Review
+Author: Platform Engineering | Date: June 2025
+
+1. Overview
+-----------
+This document describes the technical approach for migrating the Hydra platform from a
+self-managed PostgreSQL 12 instance (running on a bare-metal server in the Slough data
+centre) to Amazon RDS for PostgreSQL 15. The migration must be completed with no more than
+30 minutes of planned downtime and zero data loss.
+
+Current state:
+- PostgreSQL 12.14 on Ubuntu 20.04 (bare-metal, Slough DC)
+- Database size: 1.2TB (including indexes)
+- Peak connections: ~340 concurrent
+- Replication: single-master, no read replicas currently configured
+
+Target state:
+- Amazon RDS PostgreSQL 15.4 in eu-west-2
+- Multi-AZ deployment (automatic failover)
+- Two read replicas for reporting workloads
+- Automated backups with 35-day retention
+- Enhanced monitoring via CloudWatch and RDS Performance Insights
+
+2. Migration Strategy
+---------------------
+We will use AWS Database Migration Service (DMS) for the live replication phase, combined
+with a cutover window during a low-traffic period (proposed: Sunday 3am–5am BST).
+
+Phase 1 — Pre-migration preparation (weeks 22–24)
+  - Provision RDS target instance and validate network connectivity from application layer
+  - Run pg_upgrade compatibility checks against PostgreSQL 15
+  - Identify and remediate deprecated functions/syntax (preliminary scan found 3 instances
+    of to_timestamp() usage that needs review)
+  - Set up DMS replication instance and test source endpoint connectivity
+  - Validate IAM permissions for DMS task execution
+
+Phase 2 — Initial load (week 25, estimated 18–22 hours)
+  - DMS full-load task copies all tables from source to target
+  - Application traffic continues against source database throughout
+  - Estimated data transfer: 1.2TB at typical DMS throughput of ~60GB/hour
+
+Phase 3 — Change data capture / live replication (weeks 25–26)
+  - After full load completes, DMS switches to CDC mode
+  - WAL-based replication keeps target in sync with source
+  - Replication lag monitored; target SLA: <5 minutes lag sustained
+  - No application changes during this phase
+
+Phase 4 — Cutover (week 26, Sunday window)
+  - 02:50: Notify on-call team, confirm go/no-go
+  - 03:00: Put application into maintenance mode (returns 503 to users)
+  - 03:02: Verify DMS replication lag reaches zero
+  - 03:05: Stop DMS task; disconnect source
+  - 03:07: Update application database connection string (environment variable via
+           Parameter Store) and restart application pods
+  - 03:15: Smoke test critical paths (login, order creation, report generation)
+  - 03:25: Remove maintenance mode; monitor error rates for 30 minutes
+  - 05:00: Confirm success or initiate rollback
+
+Rollback Plan
+-------------
+If smoke tests fail or critical errors are observed post-cutover:
+- Revert application connection string to source database
+- Restart application pods against original source
+- Estimated rollback time: 8 minutes
+- Source database remains read-write throughout the cutover window for this reason
+
+3. Schema and Data Validation
+------------------------------
+Row count validation will be performed on all 147 tables before and after the full load.
+Any discrepancy halts the migration.
+
+Checksum validation on the 12 highest-volume tables using a custom Python script
+(db_checksum_validator.py — attached to this document).
+
+Post-cutover validation queries are documented in the runbook (see Appendix A).
+
+4. Performance Considerations
+------------------------------
+RDS instance type selected: db.r7g.4xlarge (16 vCPU, 128GB RAM)
+Rationale: current bare-metal server has 32 vCPU / 128GB RAM; we are intentionally
+provisioning conservatively and will right-size based on CloudWatch metrics after 4 weeks.
+
+Connection pooling: PgBouncer is already deployed in front of the source database.
+The same PgBouncer layer will be retained in front of RDS, which means the application
+connection string change is a single-endpoint swap.
+
+Indexes: All existing indexes will be migrated by DMS. The team will review index usage
+via pg_stat_user_indexes 30 days post-migration and drop any with zero scans.
+
+5. Security
+-----------
+- Data in transit: TLS enforced on all RDS connections (ssl-mode=require)
+- Encryption at rest: AES-256 via AWS KMS (CMK, not default key)
+- VPC placement: RDS instance in private subnet, no public accessibility
+- Credentials: rotated post-migration via AWS Secrets Manager; old credentials revoked
+- DMS task logs: retained for 30 days, access restricted to Platform Engineering role
+
+6. Risks and Mitigations
+------------------------
+Risk: DMS CDC lag spikes during high write periods, delaying cutover
+Mitigation: Monitor lag hourly in the 48 hours before cutover; move window if lag
+exceeds 10 minutes at any point in the 24 hours prior.
+
+Risk: Application incompatibility with PostgreSQL 15 syntax/behaviour changes
+Mitigation: Full regression test suite run against a clone of the RDS target in week 24;
+any failures resolved before week 25 full load begins.
+
+Risk: Network throughput between Slough DC and eu-west-2 limits DMS throughput
+Mitigation: Direct Connect circuit to eu-west-2 is in place (1Gbps); DMS throughput
+tests in week 22 will confirm realistic transfer time estimates.
+
+7. Approvals Required
+---------------------
+- Head of Engineering: sign-off on migration plan ☐
+- Head of InfoSec: sign-off on security section ☐
+- Head of Operations: confirm cutover window and on-call rota ☐
+
+Appendix A — Post-cutover validation queries: [see separate attachment]

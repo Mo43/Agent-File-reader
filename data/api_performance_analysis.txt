@@ -1,0 +1,102 @@
+API Performance Analysis — Customer Data Platform
+Backend Engineering | June 2025
+
+Background
+----------
+Following a series of customer complaints about slow dashboard load times in May, the backend
+team conducted a targeted performance investigation across the Customer Data Platform (CDP) API.
+This document summarises findings, root causes identified, and changes already shipped.
+
+Scope
+-----
+The investigation covered the five highest-latency endpoints as identified by Datadog APM traces
+collected over a two-week window (1–14 June 2025):
+
+  GET  /api/v2/customers/{id}/timeline
+  GET  /api/v2/reports/cohort-summary
+  POST /api/v2/segments/evaluate
+  GET  /api/v2/customers/search
+  GET  /api/v2/dashboard/overview
+
+Findings by Endpoint
+---------------------
+
+1. GET /api/v2/customers/{id}/timeline
+   P95 latency: 4,200ms | Target: <500ms
+
+   Root cause: N+1 query pattern. For each event in a customer's timeline, the ORM was issuing
+   a separate query to resolve the associated campaign name. A customer with 200 timeline events
+   triggered 201 database queries per request.
+
+   Fix applied: Replaced ORM lazy-loading with a single JOIN query. Deployed week 24.
+   Result: P95 latency reduced to 310ms. ✓
+
+2. GET /api/v2/reports/cohort-summary
+   P95 latency: 11,800ms | Target: <2,000ms
+
+   Root cause: The cohort aggregation query runs against the main transactional database with no
+   read replica routing. The query performs a full table scan on the events table (currently 340M
+   rows) with no covering index on the (customer_id, event_type, created_at) combination.
+
+   Fix in progress: Index added to staging; testing confirms query time drops from ~9s to ~420ms.
+   Read replica routing for all reporting queries scoped for week 27.
+   Estimated post-fix P95: ~600ms.
+
+3. POST /api/v2/segments/evaluate
+   P95 latency: 8,100ms | Target: <1,000ms
+
+   Root cause: Segment evaluation is synchronous and blocks the request thread while computing
+   across the full customer dataset. For large segments (>50k members) this regularly exceeds the
+   8s API gateway timeout, causing client-side errors that were being swallowed silently.
+
+   Fix approach: Move evaluation to an async Celery task; return a job ID immediately and poll
+   for results. This is a more significant architectural change — scoped for Q3, not a quick patch.
+   Interim mitigation: added a 50k member guard that returns a 422 with a clear error message
+   rather than timing out silently.
+
+4. GET /api/v2/customers/search
+   P95 latency: 1,900ms | Target: <300ms
+
+   Root cause: Full-text search was implemented using ILIKE '%term%' in PostgreSQL, which
+   cannot use standard B-tree indexes. On the customers table (12M rows) this is a sequential scan.
+
+   Fix applied: Migrated to PostgreSQL full-text search using tsvector/tsquery with a GIN index.
+   P95 now at 180ms. ✓
+
+5. GET /api/v2/dashboard/overview
+   P95 latency: 3,400ms | Target: <800ms
+
+   Root cause: The overview endpoint aggregates data from six separate internal service calls
+   made sequentially. Total network overhead accounted for ~2,800ms of the response time.
+
+   Fix applied: Converted sequential calls to concurrent using asyncio.gather(). P95 now at 640ms.
+   Further improvement possible by caching the slowest sub-call (segment counts) with a 60s TTL —
+   scoped for week 26.
+
+Summary Table
+-------------
+Endpoint                        | Before  | After   | Status
+--------------------------------|---------|---------|------------------
+/customers/{id}/timeline        | 4,200ms | 310ms   | Fixed ✓
+/reports/cohort-summary         | 11,800ms| ~600ms  | In progress
+/segments/evaluate              | 8,100ms | —       | Q3 (interim fix)
+/customers/search               | 1,900ms | 180ms   | Fixed ✓
+/dashboard/overview             | 3,400ms | 640ms   | Fixed ✓
+
+Lessons Learned
+---------------
+- ORM lazy-loading defaults are a consistent source of N+1 problems; team to adopt query
+  logging in development to catch these before they reach production.
+- Reporting and transactional workloads should not share the same database connection pool.
+  Read replica routing is now a platform standard for all new reporting endpoints.
+- Silent timeout failures (swallowed 504s) masked real errors for several weeks. All API
+  gateway timeouts now propagate structured error responses to the client.
+
+Next Steps
+----------
+- Deploy cohort-summary index fix to production (week 26).
+- Implement read replica routing for all /reports/* endpoints (week 27).
+- Begin async segment evaluation design document for Q3 planning.
+- Introduce query-time budget tests in CI to catch regressions early.
+
+Author: Backend Engineering Team

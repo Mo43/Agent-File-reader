@@ -1,0 +1,113 @@
+Sprint 22 Retrospective & Sprint 23 Planning Summary
+Product: Orion Logistics Platform | Team: Core Backend
+Date: 13 June 2025 | Facilitator: Dev Lead
+
+---
+
+SPRINT 22 RETROSPECTIVE
+========================
+
+Sprint Goal (as set)
+---------------------
+Deliver the carrier allocation engine v2 with dynamic pricing support, and resolve the
+three outstanding P1 bugs from the previous sprint.
+
+Sprint Goal Achievement: PARTIAL
+
+What we delivered
+-----------------
+✓ Carrier allocation engine v2 — merged and deployed to staging on day 8 of 10.
+✓ P1 Bug #1803 (duplicate booking IDs under concurrent load) — fixed and verified.
+✓ P1 Bug #1821 (incorrect tax calculation for EU shipments) — fixed and deployed to prod.
+✗ Dynamic pricing support — not completed. Scope was underestimated; see below.
+✗ P1 Bug #1834 (webhook retry storm on provider timeout) — still open; deprioritised
+  after #1803 fix absorbed more time than estimated.
+
+Velocity
+--------
+Planned story points: 47
+Completed story points: 31
+Velocity: 66% (three-sprint average: 74%)
+
+What went well
+--------------
+- The allocation engine work was well-scoped and the pair-programming sessions on the
+  core routing algorithm were effective. Both engineers felt the design held up.
+- Daily standups were tight and focused this sprint; no recurring blocker went unraised
+  for more than one day.
+- The fix for #1803 (concurrent duplicate IDs) involved a thorough root-cause investigation
+  and the team produced a solid post-incident write-up that's now in the runbook.
+
+What didn't go well
+--------------------
+- Dynamic pricing was brought into the sprint late (day 2) following a request from the
+  product owner, without re-estimating or removing anything from the sprint. This was the
+  primary reason for underdelivery.
+- Three engineers were pulled into an unplanned incident on day 5 (provider outage) for
+  a combined 11 hours. This was not reflected in sprint capacity and was only identified
+  retrospectively as a factor.
+- Bug #1834 was de-scoped mid-sprint without explicit team agreement — the decision was
+  made by the dev lead alone. The team flagged this should be a group call going forward.
+
+Action items from retro
+-----------------------
+Action 1: No new work added to a sprint after day 1 without a formal scope swap.
+          Owner: Dev Lead + Product Owner. Effective: immediately.
+
+Action 2: Unplanned incident hours to be tracked in Jira and factored into next sprint
+          capacity calculation.
+          Owner: Scrum Master. Effective: Sprint 23.
+
+Action 3: Mid-sprint de-scoping decisions to be made in standup with team consensus,
+          not unilaterally.
+          Owner: Dev Lead. Effective: immediately.
+
+---
+
+SPRINT 23 PLAN
+==============
+
+Sprint Goal
+-----------
+Complete dynamic pricing support, close P1 Bug #1834, and deliver the carrier webhook
+reliability improvements identified in the post-incident review.
+
+Capacity
+--------
+Team size: 5 engineers
+Sprint duration: 10 days
+Planned capacity: 42 story points (adjusted down from 47 due to two days of planned leave
+and one day allocated to incident buffer following Sprint 22 learnings)
+
+Sprint Backlog
+--------------
+Story  | Description                                          | Points | Owner
+-------|------------------------------------------------------|--------|-------
+ORN-210| Dynamic pricing: rate card ingestion service         | 8      | Priya
+ORN-211| Dynamic pricing: allocation engine integration       | 5      | Priya + Tom
+ORN-212| Dynamic pricing: API response schema changes         | 3      | Tom
+ORN-213| P1 Bug #1834: webhook retry storm fix                | 5      | James
+ORN-214| Webhook: idempotency key enforcement                 | 3      | James
+ORN-215| Webhook: dead-letter queue and alerting              | 5      | James + Aisha
+ORN-216| Carrier API: circuit breaker implementation         | 8      | Aisha
+ORN-217| Integration tests: dynamic pricing end-to-end       | 3      | Tom
+ORN-218| Runbook update: carrier failure scenarios            | 2      | Dev Lead
+       | TOTAL                                                | 42     |
+
+Definition of Done reminder
+-----------------------------
+- Code reviewed by at least one other engineer
+- Unit test coverage >= 80% on new code
+- Integration test passing in staging
+- Runbook updated if the change touches an on-call scenario
+- Product owner sign-off on user-facing changes
+
+Sprint 23 Risks
+---------------
+- ORN-216 (circuit breaker) is the highest-uncertainty card; Aisha has not implemented
+  a circuit breaker pattern before. A 2-hour design session with the dev lead is booked
+  for day 1.
+- Dynamic pricing cards (ORN-210 to 212) have an external dependency on the rate card
+  format from the commercial team. Format confirmed as of 12 June — low risk.
+
+Next retrospective: 27 June 2025

@@ -1,0 +1,90 @@
+Digital Transformation Programme — Monthly Steering Update
+Month 14 of 24 | June 2025 | Prepared for: Executive Steering Committee
+
+Programme Overview
+------------------
+The Digital Transformation Programme (DTP) is a two-year initiative to modernise core business
+operations across Finance, HR, and Customer Services. The programme is structured across five
+workstreams, each with an assigned senior responsible owner (SRO).
+
+RAG Status Summary
+------------------
+Workstream 1 — Finance Systems Modernisation     GREEN
+Workstream 2 — Customer Portal Rebuild           AMBER
+Workstream 3 — HR Self-Service Platform          GREEN
+Workstream 4 — Data & Reporting Infrastructure  AMBER
+Workstream 5 — Cyber Security Uplift             RED
+
+Overall Programme Status: AMBER
+
+Key Achievements This Month
+-----------------------------
+- Workstream 1: Automated month-end reconciliation went live on 2 June. Early results show
+  a reduction in manual reconciliation effort from 3.5 days to 4 hours. Finance team sign-off
+  received.
+
+- Workstream 3: HR self-service portal passed user acceptance testing with a satisfaction
+  score of 82% (threshold: 75%). Rollout to remaining 1,200 staff scheduled for July.
+
+- Workstream 5 (partial): Privileged access management (PAM) tooling deployed to 60% of
+  endpoints ahead of schedule. Remaining 40% blocked pending device refresh — see risks below.
+
+Issues and Escalations
+-----------------------
+Issue DTP-041 (Workstream 2 — Customer Portal):
+The third-party CRM vendor has notified the programme that their API v2 will be deprecated in
+September 2025, two months earlier than the contracted support end date. The portal rebuild is
+currently integrating against API v2. The team has raised a formal dispute with the vendor;
+legal review is underway. Worst-case scenario requires a 6-week development rework.
+Impact: potential delay to Workstream 2 go-live from October to December 2025.
+Escalation required: Steering Committee decision on contingency budget (estimated £85k).
+
+Issue DTP-044 (Workstream 4 — Data & Reporting):
+Data migration from the legacy data warehouse has uncovered 340,000 records with data quality
+issues (duplicate customer IDs, missing postcode fields, inconsistent date formats). The data
+cleansing effort was not accounted for in the original project scope. An additional 3 weeks of
+engineering time has been absorbed, pushing the reporting dashboard go-live from week 28 to
+week 32.
+
+Issue DTP-047 (Workstream 5 — Cyber Security):
+The planned device refresh for 800 endpoints required to complete PAM rollout has been delayed
+by procurement. New hardware delivery now expected week 30, against a programme need of week 24.
+This delay puts the Cyber workstream critical path at risk and is the primary reason for the RED
+status. SRO has escalated to the COO.
+
+Budget Position
+---------------
+Approved programme budget:     £4,200,000
+Spend to date (month 14):      £2,580,000 (61.4%)
+Forecast outturn:              £4,410,000 (£210,000 over budget)
+
+Primary drivers of forecast overspend:
+- Data cleansing effort (DTP-044): +£95,000
+- Extended vendor engagement for CRM dispute (DTP-041): +£40,000
+- Device refresh delay knock-on contractor costs (DTP-047): +£75,000
+
+A formal change request for the additional £210,000 will be presented to the Investment
+Committee at the July meeting.
+
+Risks
+-----
+Risk R-12: CRM API deprecation causing portal delay — Probability HIGH / Impact HIGH
+           Mitigation: vendor dispute in progress; parallel-track API v3 spike underway.
+
+Risk R-15: Device refresh delay blocking cyber uplift — Probability HIGH / Impact HIGH
+           Mitigation: emergency procurement process initiated; COO engaged.
+
+Risk R-18: Staff adoption risk for HR portal — Probability MEDIUM / Impact MEDIUM
+           Mitigation: change management communications plan issued; floor-walker support
+           planned for first two weeks post-rollout.
+
+Decisions Required from Steering Committee
+-------------------------------------------
+1. Approve contingency budget of £85,000 for CRM API v3 rework (DTP-041).
+2. Note the overall budget forecast overspend of £210,000 and confirm Investment Committee
+   submission in July.
+3. Confirm COO engagement on device procurement escalation (DTP-047) is sufficient or
+   escalate further.
+
+Next Steering Update: July 2025
+Programme Manager: Sarah Okonkwo
