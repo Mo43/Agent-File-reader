@@ -1,7 +1,6 @@
 import os
 import fitz
 from dotenv import load_dotenv
-from smolagents import CodeAgent, InferenceClientModel
 from smolagents import CodeAgent, InferenceClientModel, tool
 
 load_dotenv()
