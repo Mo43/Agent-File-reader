@@ -1,3 +1,5 @@
 smolagents
 pymupdf
 python-dotenv
+huggingface_hub
+
