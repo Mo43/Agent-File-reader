@@ -1,4 +1,4 @@
-## What does this do? 
+## What does it do? 
 
 ## Setup Instructions
 - Use the requirements.txt file in order to install all the neccesary dependencies to run this summariser
